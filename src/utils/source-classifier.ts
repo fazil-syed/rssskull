@@ -1,6 +1,6 @@
 /**
  * Source classifier for feed URLs
- * Determines whether a URL should use Reddit API, RSS, or is unsupported
+ * Determines whether a URL should be treated as a Reddit subreddit feed or a generic RSS source
  */
 
 export type FeedSource = 'reddit' | 'rss' | 'unsupported';
@@ -17,7 +17,7 @@ export function classifySource(url: string): FeedSource {
     const u = new URL(url);
     const h = u.hostname.replace(/^www\./, '').toLowerCase();
     
-    // Reddit (qualquer subdomínio) - sempre classificar como Reddit independente de ter .rss
+    // Reddit (qualquer subdomínio) - sempre classificar como Reddit para normalização em /.rss
     if (h === 'reddit.com' || h.endsWith('.reddit.com')) return 'reddit';
     
     // Heurística: se contém 'reddit' no host
@@ -41,4 +41,3 @@ export function classifySource(url: string): FeedSource {
 export function getSubredditFromUrl(url: string): string | null {
   return extractSubreddit(url);
 }
-

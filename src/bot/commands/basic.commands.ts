@@ -107,9 +107,13 @@ ${ctx.t('cmd.remove')}
 ${ctx.t('cmd.enable')}
 ${ctx.t('cmd.disable')}
 ${ctx.t('cmd.discover')}
+${ctx.t('cmd.status')}
 ${ctx.t('cmd.filters')}
 
 ${ctx.t('help.other')}
+${ctx.t('cmd.template')}
+${ctx.t('cmd.stats')}
+${ctx.t('cmd.ping')}
 ${ctx.t('cmd.help')}
 
 ${ctx.t('help.developer')}`;
@@ -435,5 +439,4 @@ export class CircuitBreakerStatsCommand extends BaseCommandHandler {
     }
   }
 }
-
 

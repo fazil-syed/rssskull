@@ -17,14 +17,11 @@ import {
   HelpCommand,
   ListFeedsCommand,
   PingCommand,
-  // ProcessFeedCommand, // Disabled - command no longer used
-  // ProcessFeedsCommand, // Disabled - command no longer used
   ReloadFeedsCommand,
   RemoveFeedCommand,
   ResetCircuitBreakerCommand,
   ResetCommand,
   ResetFeedCommand,
-  // SettingsCommand, // Disabled - settings don't affect system
   StartCommand,
   StatsCommand,
 } from './commands/index.js';
@@ -810,8 +807,11 @@ export class BotService {
                     'cmd.remove': '/remove <name> - Remove feed',
                     'cmd.enable': '/enable <name> - Enable feed',
                     'cmd.disable': '/disable <name> - Disable feed',
+                    'cmd.status': '/status - Show feed and job status',
                     // 'cmd.settings': '/settings - View chat settings', // Disabled - settings don't affect system
                     'cmd.filters': '/filters <name> - Manage feed filters',
+                    'cmd.template': '/template - Preview templates and variables',
+                    'cmd.ping': '/ping - Verify bot connectivity',
                     'cmd.stats': '/stats - View usage statistics',
                     'cmd.help': '/help - Show this message',
                     'error.unknown_command': '❌ Unknown command. Use /help to see available commands.',
@@ -1594,13 +1594,16 @@ export class BotService {
       const commands = [
         { command: 'start', description: 'Start the bot and show welcome message' },
         { command: 'help', description: 'Show available commands' },
+        { command: 'ping', description: 'Verify bot connectivity' },
         { command: 'add', description: 'Add a new RSS feed' },
         { command: 'list', description: 'List all feeds' },
         { command: 'remove', description: 'Remove a feed' },
         { command: 'enable', description: 'Enable a feed' },
         { command: 'disable', description: 'Disable a feed' },
-        { command: 'settings', description: 'View and modify chat settings' },
+        { command: 'discover', description: 'Discover feeds from a website' },
+        { command: 'status', description: 'Show feed and job status' },
         { command: 'filters', description: 'Manage feed filters' },
+        { command: 'template', description: 'Preview or inspect message templates' },
         { command: 'stats', description: 'View usage statistics' },
       ];
 
@@ -2074,4 +2077,3 @@ export class BotService {
     return this.bot;
   }
 }
-

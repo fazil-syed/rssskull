@@ -18,10 +18,7 @@ const SENSITIVE_PATTERNS = {
   
   // Base64 encoded tokens (common in Basic auth)
   base64Token: /[A-Za-z0-9+/]{40,}={0,2}/g,
-  
-  // Reddit client secrets (typically long alphanumeric)
-  redditSecret: /\b[A-Za-z0-9_-]{30,}\b/g,
-  
+
   // API keys (various formats)
   apiKey: /(api[_-]?key|apikey)[=:]\s*([A-Za-z0-9_-]{20,})/gi,
   
@@ -48,19 +45,13 @@ const SENSITIVE_FIELD_NAMES = [
   'credential',
   'credentials',
   'bot_token',
-  'reddit_client_secret',
-  'reddit_password',
   'redis_password',
 ];
 
 // Environment variable names that contain sensitive data
 const SENSITIVE_ENV_VARS = [
   'BOT_TOKEN',
-  'REDDIT_CLIENT_SECRET',
-  'REDDIT_PASSWORD',
   'REDIS_PASSWORD',
-  'REDDIT_CLIENT_ID',
-  'REDDIT_USERNAME',
 ];
 
 /**

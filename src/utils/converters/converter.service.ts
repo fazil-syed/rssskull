@@ -8,14 +8,14 @@ import { YouTubeConverter } from './youtube.converter.js';
 
 /**
  * Service that manages URL conversion using registered converters
- * Note: RedditConverter removed - Reddit now uses JSON API directly
+ * Reddit URLs are handled separately by normalization to the public /.rss endpoint.
  */
 export class ConverterService {
   private readonly converters: Map<string, URLConverter> = new Map();
 
   constructor() {
     // Register default converters
-    // RedditConverter removed - Reddit uses JSON API directly in reddit.service.ts
+    // Reddit URLs are normalized in reddit.service.ts.
     this.registerConverter(new YouTubeConverter());
   }
 

@@ -32,7 +32,7 @@ export class CacheService {
   // TTL base por tipo de domínio (em milliseconds)
   private domainTTL: Record<string, number> = {
     // Alta frequência - cache curto
-    'reddit.com': 0, // Cache desabilitado para Reddit (usa JSON API)
+    'reddit.com': 0, // Cache desabilitado para Reddit RSS para evitar leituras defasadas
     'hackernews': 5 * 60 * 1000,  // 5 minutos
     'techcrunch.com': 5 * 60 * 1000, // 5 minutos
     
@@ -54,10 +54,10 @@ export class CacheService {
    */
   private calculateTTL(url: string): number {
     const domain = this.extractDomain(url);
-    const baseTTL = this.domainTTL[domain] || this.domainTTL.default || 20 * 60 * 1000;
+    const baseTTL = this.domainTTL[domain] ?? this.domainTTL.default ?? 20 * 60 * 1000;
     
     // Se TTL é 0 (cache desabilitado), retornar 0 diretamente
-    if (baseTTL === 0) {
+    if (baseTTL <= 0) {
       return 0;
     }
     
@@ -117,6 +117,15 @@ export class CacheService {
   setWithHeaders(url: string, feed: RSSFeed, headers?: { etag?: string; lastModified?: string }): void {
     const now = Date.now();
     const ttl = this.getTTLForUrl(url);
+
+    if (ttl <= 0) {
+      this.cache.delete(url);
+      logger.debug(`Cache SKIP: ${this.extractDomain(url)}`, {
+        url,
+        reason: 'ttl_disabled',
+      });
+      return;
+    }
     
     const entry: CacheEntry = {
       url,
@@ -200,17 +209,11 @@ export class CacheService {
 
   /**
    * Get TTL for a specific URL based on domain and feed characteristics
-   * Reddit URLs always use fixed TTL regardless of user settings
+   * Reddit URLs bypass cache to avoid stale subreddit listings.
    */
   private getTTLForUrl(url: string): number {
-    // For Reddit URLs, always use fixed TTL (not configurable by user)
     if (url.includes('reddit.com')) {
-      const baseTTL = this.domainTTL['reddit.com'] || 20 * 60 * 1000; // 20 minutes fixed
-      const variation = Math.random() * 0.5 * baseTTL - 0.25 * baseTTL;
-      const randomTTL = Math.max(baseTTL * 0.5, baseTTL + variation);
-      
-      logger.debug(`REDDIT FIXED TTL: ${randomTTL}ms (base: ${baseTTL}ms, variation: ${variation.toFixed(0)}ms)`);
-      return randomTTL;
+      return this.domainTTL['reddit.com'] ?? 0;
     }
     
     // For other domains, use configurable TTL

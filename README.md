@@ -1,156 +1,97 @@
 # RSS Skull Bot
 
-<p align="center">
-    <img src="https://skillicons.dev/icons?i=ts,js,py,redis" />
-</p>
+RSS Skull Bot is a TypeScript Telegram bot that monitors RSS, Atom, JSON Feed, Reddit subreddit RSS feeds and converted social sources, then delivers new items through a resilient queue-based pipeline.
 
-<p align="center">
-    <img src="https://shot.1208.pro/uploads/iMy8zIrYAW4TsUXDfDUdXjq0tVYNI0EZYWQSw5rm.png" alt="RSS Skull Bot" width="200" height="200" />
-</p>
+## Stack
 
-Enterprise-grade RSS to Telegram bot with advanced anti-blocking capabilities. Monitors RSS feeds and delivers content notifications to Telegram channels with enterprise-level reliability.
+- Node.js 20+
+- TypeScript
+- grammY + `@grammyjs/runner`
+- Fastify
+- Prisma + SQLite
+- BullMQ + Redis
 
-## Overview
+## What It Does
 
-RSS Skull Bot is a production-ready Telegram bot built with Python that monitors RSS feeds and sends notifications when new content is available. The system includes comprehensive anti-blocking mechanisms, Reddit integration, circuit breakers, and Docker-first deployment architecture.
+- Monitors feeds on recurring schedules with Redis-backed workers
+- Supports RSS 2.0, Atom 1.0 and JSON Feed 1.1
+- Normalizes Reddit subreddit URLs to the public `/.rss` feed
+- Converts or discovers feeds from YouTube and websites
+- Applies include/exclude filters per feed
+- Uses dedupe, retries, circuit breakers and health monitoring
+- Exposes operational endpoints such as `/health`, `/stats`, `/metrics` and `/resilience-stats`
 
-Key features:
-- Multi-format RSS support (RSS 2.0, Atom, JSON Feed 1.1)
-- Real-time notifications to Telegram channels
-- Advanced anti-blocking system with adaptive rate limiting
-- Reddit and YouTube feed support
-- Circuit breaker pattern for failed feeds
-- HTTP caching with ETag and Last-Modified support
-- Health monitoring and metrics endpoints
-- Database persistence with SQLite
-- Optional Redis caching layer
+## Quick Start
 
-## Prerequisites
+### Docker
 
-- Docker and Docker Compose (recommended for production)
-- Python 3.11+ (for local development)
-- Telegram Bot Token from [@BotFather](https://t.me/botfather)
-- Redis (optional, can be disabled)
-
-## Quick Installation
-
-### Docker Installation (Recommended)
-
-1. Clone the repository:
-```bash
-git clone https://github.com/runawaydevil/rssskull.git
-cd rssskull
-```
-
-2. Create environment file:
 ```bash
 cp .env.example .env
 ```
 
-3. Edit `.env` and set your `BOT_TOKEN`:
-```bash
-BOT_TOKEN=your_telegram_bot_token_here
-```
+Set `BOT_TOKEN` in `.env`, then run:
 
-4. Start the application:
 ```bash
-docker-compose up -d --build
-```
-
-5. Verify deployment:
-```bash
-docker-compose ps
+docker compose up -d --build
 curl http://localhost:8916/health
 ```
 
-For detailed installation instructions, see [docs/INSTALLATION.md](docs/INSTALLATION.md).
+### Local Development
 
-### Local Development Installation
+Prerequisites:
 
-1. Create virtual environment:
+- Node.js 20+
+- Redis
+
+Run:
+
 ```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-2. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
-
-3. Configure environment:
-```bash
+npm install
 cp .env.example .env
-# Edit .env with your BOT_TOKEN
 ```
 
-4. Run the application:
+For local development, set at least:
+
 ```bash
-python run.py
+NODE_ENV=development
+DATABASE_URL=file:./dev.db
+REDIS_HOST=localhost
+BOT_TOKEN=your_real_bot_token
 ```
 
-For detailed local development setup, see [docs/INSTALLATION.md](docs/INSTALLATION.md).
+Then:
 
-## Basic Usage
-
-Start a conversation with your bot on Telegram and use the following commands:
-
-- `/start` - Initialize the bot
-- `/help` - Show available commands
-- `/add <name> <url>` - Add a new RSS feed
-- `/list` - List all monitored feeds
-- `/stats` - Show bot statistics
-
-Example:
-```
-/add TechNews https://example.com/rss
-/add RedditPython https://reddit.com/r/Python
+```bash
+npm run db:generate
+npm run dev
 ```
 
-For complete command reference and usage examples, see [docs/USAGE.md](docs/USAGE.md).
+## Core Commands
 
-## Documentation
+- `/start`
+- `/help`
+- `/ping`
+- `/add <name> <url>`
+- `/list`
+- `/remove <name>`
+- `/enable <name>`
+- `/disable <name>`
+- `/discover <url>`
+- `/status`
+- `/filters ...`
+- `/template ...`
+- `/stats`
 
-- [Installation Guide](docs/INSTALLATION.md) - Comprehensive installation instructions
-- [Configuration Reference](docs/CONFIGURATION.md) - Complete configuration options
-- [System Architecture](docs/ARCHITECTURE.md) - Architecture and design documentation
-- [Usage Guide](docs/USAGE.md) - Bot commands and usage examples
-- [Operations Manual](docs/OPERATIONS.md) - Monitoring, logging, and troubleshooting
-- [Development Guide](docs/DEVELOPMENT.md) - Development setup and contribution guidelines
+## Docs
 
-## Technology Stack
-
-- Python 3.11+
-- FastAPI for HTTP endpoints
-- aiogram for Telegram Bot API
-- SQLModel for database ORM
-- APScheduler for job scheduling
-- aiohttp for HTTP client
-- feedparser for RSS parsing
-- Redis for caching (optional)
+- [Installation](docs/INSTALLATION.md)
+- [Configuration](docs/CONFIGURATION.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Usage](docs/USAGE.md)
+- [Operations](docs/OPERATIONS.md)
+- [Development](docs/DEVELOPMENT.md)
+- [Security](docs/SECURITY.md)
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-Copyright (c) 2025-2026 Pablo Murad (@runawaydevil)
-
-## Support
-
-- Issues: [GitHub Issues](https://github.com/runawaydevil/rssskull/issues)
-- Repository: [https://github.com/runawaydevil/rssskull](https://github.com/runawaydevil/rssskull)
-- Developer: [@runawaydevil](https://github.com/runawaydevil)
-
----
-
-*Along the shore the cloud waves break,  
-The twin suns sink behind the lake,  
-The shadows lengthen  
-In Carcosa.*
-
-*Strange is the night where black stars rise,  
-And strange moons circle through the skies,  
-But stranger still is  
-Lost Carcosa.*
-
-**Robert W. Chambers**
+MIT. See [LICENSE](LICENSE).

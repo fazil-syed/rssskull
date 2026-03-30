@@ -19,7 +19,7 @@ const messages = {
     // 'help.settings': '⚙️ *Settings:*', // Disabled - settings don't affect system
     'help.other': 'ℹ️ *Other:*',
     'help.developer': '👨‍💻 *Developer:* Pablo Murad - https://github.com/runawaydevil',
-    'help.reddit_cache': '⚠️ *Note:* Reddit feeds use fixed cache settings (20min TTL) for optimal performance.',
+    'help.reddit_cache': '⚠️ *Note:* Reddit subreddit URLs are normalized to the public `/.rss` feed.',
 
     // Commands
     'cmd.add': '/add <name> <url> - Add RSS feed',
@@ -28,8 +28,11 @@ const messages = {
     'cmd.enable': '/enable <name> - Enable feed',
     'cmd.disable': '/disable <name> - Disable feed',
     'cmd.discover': '/discover <url> - Discover feeds from website',
+    'cmd.status': '/status - Show feed and job status',
     // 'cmd.settings': '/settings - View chat settings', // Disabled - settings don't affect system
     'cmd.filters': '/filters <name> - Manage feed filters',
+    'cmd.template': '/template - Preview templates and variables',
+    'cmd.ping': '/ping - Verify bot connectivity',
     'cmd.process': '/process - Manually process all feeds',
     'cmd.help': '/help - Show this message',
 
@@ -93,7 +96,7 @@ const messages = {
 
     // Template messages
     'template.help':
-      'Template commands:\n• /settings template - Clear template\n• /settings template <text> - Set custom template\n• /template preview <text> - Preview template\n• /template examples - Show template examples\n• /template variables - Show available variables',
+      'Template commands:\n• /template preview <text> - Preview a template\n• /template examples - Show template examples\n• /template variables - Show available variables',
     'template.examples_title': '📝 *Template Examples:*',
     'template.variables_title': '🔧 *Available Variables:*',
     'template.variable_item': '• `{{{{name}}}}` - {{description}}',
@@ -162,7 +165,7 @@ const messages = {
     // 'help.settings': '⚙️ *Configurações:*', // Disabled - settings don't affect system
     'help.other': 'ℹ️ *Outros:*',
     'help.developer': '👨‍💻 *Desenvolvedor:* Pablo Murad - https://github.com/runawaydevil',
-    'help.reddit_cache': '⚠️ *Nota:* Feeds do Reddit usam configurações de cache fixas (20min TTL) para melhor performance.',
+    'help.reddit_cache': '⚠️ *Nota:* URLs de subreddit do Reddit são normalizadas para o feed público `/.rss`.',
 
     // Commands
     'cmd.add': '/adicionar <nome> <url> - Adicionar feed RSS',
@@ -171,8 +174,11 @@ const messages = {
     'cmd.enable': '/habilitar <nome> - Habilitar feed',
     'cmd.disable': '/desabilitar <nome> - Desabilitar feed',
     'cmd.discover': '/descobrir <url> - Descobrir feeds de um site',
+    'cmd.status': '/status - Mostrar status dos feeds e jobs',
     // 'cmd.settings': '/configuracoes - Ver configurações do chat', // Disabled - settings don't affect system
     'cmd.filters': '/filtros <nome> - Gerenciar filtros do feed',
+    'cmd.template': '/template - Ver templates e variáveis',
+    'cmd.ping': '/ping - Verificar conectividade do bot',
     'cmd.process': '/processar - Processar manualmente todos os feeds',
     'cmd.help': '/ajuda - Mostrar esta mensagem',
 
@@ -238,7 +244,7 @@ const messages = {
 
     // Template messages
     'template.help':
-      'Comandos de template:\n• /configuracoes template - Limpar template\n• /configuracoes template <texto> - Definir template personalizado\n• /template preview <texto> - Visualizar template\n• /template examples - Mostrar exemplos de template\n• /template variables - Mostrar variáveis disponíveis',
+      'Comandos de template:\n• /template preview <texto> - Visualizar um template\n• /template examples - Mostrar exemplos de template\n• /template variables - Mostrar variáveis disponíveis',
     'template.examples_title': '📝 *Exemplos de Template:*',
     'template.variables_title': '🔧 *Variáveis Disponíveis:*',
     'template.variable_item': '• `{{{{name}}}}` - {{description}}',

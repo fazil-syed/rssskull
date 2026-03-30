@@ -15,11 +15,6 @@ export {
   type SendResult,
 } from './notification.service.js';
 export {
-  SettingsService,
-  type SettingsUpdateInput,
-  type SettingsValidationError,
-} from './settings.service.js';
-export {
   TemplateService,
   type TemplateVariables,
   type TemplateValidationError,

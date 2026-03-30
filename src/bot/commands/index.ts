@@ -12,9 +12,6 @@ export {
   FeedStatusCommand,
 } from './feed.commands.js';
 
-// Settings commands
-// export { SettingsCommand } from './settings.commands.js'; // Disabled - settings don't affect system
-
 // Filter commands
 export { FiltersCommand } from './filter.commands.js';
 

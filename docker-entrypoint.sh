@@ -1,24 +1,21 @@
 #!/bin/sh
+set -eu
 
-echo "🚀 Starting RSS Skull Bot (Python)..."
+echo "🚀 Starting RSS Skull Bot..."
 
-# Create data directory if it doesn't exist
 mkdir -p /app/data
 
-# Set database URL if not already set
-export DATABASE_URL=${DATABASE_URL:-file:/app/data/production.db}
+: "${DATABASE_URL:=file:/app/data/production.db}"
+export DATABASE_URL
 
-# Wait for Redis to be ready (if not disabled)
-if [ "${DISABLE_REDIS}" != "true" ]; then
-    echo "⏳ Waiting for Redis to be ready..."
-    until nc -z ${REDIS_HOST:-redis} ${REDIS_PORT:-6379} 2>/dev/null; do
-        echo "Waiting for Redis..."
-        sleep 1
-    done
-    echo "✅ Redis is ready"
+if [ "$DATABASE_URL" = "file:/app/data/production.db" ] && [ ! -f /app/data/production.db ]; then
+    touch /app/data/production.db
 fi
 
-# Start the application
-echo "🎯 Starting RSS Skull Bot..."
-exec python run.py
+echo "📋 Applying Prisma migrations..."
+if ! npx prisma migrate deploy --schema=./prisma/schema.prisma; then
+    echo "⚠️ Prisma migrate deploy failed, continuing with current database state..."
+fi
 
+echo "🎯 Starting RSS Skull Bot..."
+exec node dist/main.js

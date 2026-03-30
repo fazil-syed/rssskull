@@ -51,23 +51,19 @@ export class RSSService {
    * Fetch and parse an RSS feed with retry logic, rate limiting, and caching
    */
   async fetchFeed(url: string): Promise<ParseResult> {
-    // Check if this is a Reddit URL - if so, always use Reddit service (never RSS)
+    // Reddit URLs are normalized to the public /.rss endpoint and parsed normally.
     if (redditService.isRedditUrl(url)) {
-      logger.info(`🔄 Detected Reddit URL: ${url}, using Reddit service`);
-      const redditResult = await redditService.fetchFeed(url);
-      
-      // If Reddit service returns a feed, use it
-      if (redditResult.success && redditResult.feed) {
-        logger.info(`✅ Reddit service provided feed for ${url}`);
-        return redditResult;
+      const normalizedRedditUrl = redditService.normalizeFeedUrl(url);
+      if (!normalizedRedditUrl) {
+        logger.error(`Failed to normalize Reddit URL: ${url}`);
+        return {
+          success: false,
+          error: 'Failed to normalize Reddit URL',
+        };
       }
-      
-      // Reddit service failed - return error (don't fall back to RSS for Reddit)
-      logger.error(`Reddit service failed for ${url}`);
-      return {
-        success: false,
-        error: redditResult.error || 'Failed to fetch Reddit feed',
-      };
+
+      logger.info(`🔄 Detected Reddit URL: ${url}, using public RSS feed ${normalizedRedditUrl}`);
+      return await this.fetchFeedFromUrl(normalizedRedditUrl);
     }
     
     // Try alternative URLs first if the original might have issues
@@ -466,7 +462,7 @@ export class RSSService {
         
         if (itemAge > oneHourMs && firstItem.id === lastItemId) {
           logger.warn(`⚠️ STALENESS: First post in ${url} is ${Math.round(itemAge / 60000)} minutes old and no new items detected`);
-          logger.warn(`⚠️ This may indicate Reddit JSON API cache issues - consider using OAuth API`);
+          logger.warn(`⚠️ This may indicate Reddit RSS lag or upstream cache delay`);
         }
       }
       

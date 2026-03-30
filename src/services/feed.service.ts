@@ -11,6 +11,7 @@ import { isValidUrl } from '../utils/validation.js';
 import { classifySource } from '../utils/source-classifier.js';
 import { FeedDiscovery } from '../utils/feed-discovery.js';
 import { providerRegistry } from '../providers/index.js';
+import { redditService } from './reddit.service.js';
 
 export interface AddFeedInput {
   chatId: string;
@@ -45,8 +46,12 @@ export class FeedService {
   }> {
     // Check for duplicate feed name and URL first
     const existingFeeds = await this.listFeeds(input.chatId);
+    const inputComparableUrls = this.getComparableUrls(input.url, input.rssUrl);
     const duplicateName = existingFeeds.find(feed => feed.name.toLowerCase() === input.name.toLowerCase());
-    const duplicateUrl = existingFeeds.find(feed => feed.url === input.url || feed.rssUrl === input.url);
+    const duplicateUrl = existingFeeds.find(feed => {
+      const existingComparableUrls = this.getComparableUrls(feed.url, feed.rssUrl ?? undefined);
+      return [...existingComparableUrls].some(url => inputComparableUrls.has(url));
+    });
     
     if (duplicateName) {
       return {
@@ -90,13 +95,21 @@ export class FeedService {
 
       // If no explicit RSS URL provided, try URL conversion and feed discovery
       if (!input.rssUrl) {
-        // For Reddit URLs, always use the URL as-is (our parser will handle it)
+        // Normalize Reddit URLs to the public subreddit RSS endpoint.
         if (sourceType === 'reddit') {
-          rssUrl = input.url;
-          logger.info(`Reddit URL detected: ${input.url}`);
+          const normalizedRedditUrl = redditService.normalizeFeedUrl(input.url);
+          if (!normalizedRedditUrl) {
+            return {
+              success: false,
+              errors: [{ field: 'url', message: 'Could not normalize Reddit URL to its RSS feed.' }],
+            };
+          }
+
+          rssUrl = normalizedRedditUrl;
+          logger.info(`Reddit URL normalized to RSS: ${input.url} -> ${rssUrl}`);
           conversionInfo = {
             originalUrl: input.url,
-            rssUrl: input.url,
+            rssUrl,
             platform: 'reddit',
           };
         } else if (this.converterService.isRssUrl(input.url)) {
@@ -520,5 +533,24 @@ export class FeedService {
     }
 
     return errors;
+  }
+
+  private getComparableUrls(url: string, rssUrl?: string): Set<string> {
+    const urls = new Set<string>();
+
+    for (const candidate of [url, rssUrl]) {
+      if (!candidate) {
+        continue;
+      }
+
+      urls.add(candidate);
+
+      const normalizedRedditUrl = redditService.normalizeFeedUrl(candidate);
+      if (normalizedRedditUrl) {
+        urls.add(normalizedRedditUrl);
+      }
+    }
+
+    return urls;
   }
 }

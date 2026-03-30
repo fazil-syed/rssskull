@@ -6,9 +6,8 @@ This document outlines security practices for RSS Skull Bot to prevent credentia
 
 RSS Skull Bot handles sensitive credentials including:
 - Telegram Bot Tokens
-- Reddit OAuth credentials (Client ID, Client Secret, Username, Password)
 - Redis passwords
-- OAuth access tokens
+- API tokens or credentials that may appear in logs or URLs
 
 **All credentials must be kept secure and never exposed in logs, error messages, or code.**
 
@@ -156,7 +155,6 @@ These field names are automatically sanitized in objects:
 - `authorization`, `auth`
 - `credential`, `credentials`
 - `bot_token`
-- `reddit_client_secret`, `reddit_password`
 - `redis_password`
 
 ## Environment Variables
@@ -164,11 +162,7 @@ These field names are automatically sanitized in objects:
 Sensitive environment variables (values are sanitized if found in strings):
 
 - `BOT_TOKEN`
-- `REDDIT_CLIENT_SECRET`
-- `REDDIT_PASSWORD`
 - `REDIS_PASSWORD`
-- `REDDIT_CLIENT_ID`
-- `REDDIT_USERNAME`
 
 ## Adding New Logs
 
