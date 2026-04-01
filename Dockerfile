@@ -46,8 +46,6 @@ RUN mkdir -p /app/data && \
     chmod +x /app/docker-entrypoint.sh && \
     chown -R nodejs:nodejs /app /home/nodejs
 
-USER nodejs
-
 EXPOSE 8916
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=10 \

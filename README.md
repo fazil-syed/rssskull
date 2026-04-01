@@ -36,6 +36,8 @@ docker compose up -d --build
 curl http://localhost:8916/health
 ```
 
+If `BOT_TOKEN` is missing, Docker Compose now fails fast instead of starting a broken container.
+
 ### Local Development
 
 Prerequisites:

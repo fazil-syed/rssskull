@@ -3,6 +3,11 @@ set -eu
 
 echo "🚀 Starting RSS Skull Bot..."
 
+if [ -z "${BOT_TOKEN:-}" ]; then
+    echo "❌ BOT_TOKEN is required. Set it in .env before starting Docker Compose."
+    exit 1
+fi
+
 mkdir -p /app/data
 
 : "${DATABASE_URL:=file:/app/data/production.db}"
