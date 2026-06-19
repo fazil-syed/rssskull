@@ -343,8 +343,8 @@ async function queueMessageJob(data: MessageJobData, jobId?: string): Promise<vo
         type: 'exponential',
         delay: 2000,
       },
-      removeOnComplete: false, // Don't remove completed jobs immediately to prevent duplicates
-      removeOnFail: false, // Don't remove failed jobs immediately
+      removeOnComplete: { count: 50 }, // Keep last 50 completed jobs for debugging, prevent unbounded Redis growth
+      removeOnFail: { count: 20 }, // Keep last 20 failed jobs for debugging
     };
 
     // Add jobId if provided to prevent duplicates
