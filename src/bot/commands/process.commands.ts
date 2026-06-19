@@ -675,7 +675,7 @@ export class CheckFeedCommand extends BaseCommandHandler {
           select: { lastCheck: true },
         });
 
-        if (currentFeed && startCheckTime && currentFeed.lastCheck > startCheckTime) {
+        if (currentFeed && startCheckTime && currentFeed.lastCheck && currentFeed.lastCheck > startCheckTime) {
           checkFinished = true;
           break;
         } else if (currentFeed && !startCheckTime && currentFeed.lastCheck) {
@@ -690,14 +690,14 @@ export class CheckFeedCommand extends BaseCommandHandler {
         // We don't know exactly how many items were found here (worker handles delivery),
         // but we know the check successfully completed.
         await ctx.api.editMessageText(
-          ctx.chatId,
+          ctx.chat!.id,
           statusMessage.message_id,
           `✅ **Check complete for "${feedName}"!**\n\nIf any new items were found, they have been delivered to the chat.`,
           { parse_mode: 'Markdown' }
         ).catch(e => logger.warn(`Failed to edit check status message: ${e.message}`));
       } else {
         await ctx.api.editMessageText(
-          ctx.chatId,
+          ctx.chat!.id,
           statusMessage.message_id,
           `⏱️ **Check for "${feedName}" is taking longer than expected.**\n\nThe job is still queued and will process shortly. New items will arrive once it finishes.`,
           { parse_mode: 'Markdown' }
