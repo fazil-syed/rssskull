@@ -11,6 +11,12 @@ jobs:
     name: Deploy over SSH
 
     steps:
+      - name: Debug secrets
+        run: |
+          echo "HOST=${{ secrets.SSH_HOST }}"
+          echo "PORT=${{ secrets.SSH_PORT }}"
+          echo "USER=${{ secrets.SSH_USERNAME }}"
+
       - name: Deploy project over SSH
         uses: appleboy/ssh-action@v1
         with:
