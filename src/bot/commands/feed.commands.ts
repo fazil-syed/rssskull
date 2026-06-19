@@ -164,6 +164,8 @@ export class ListFeedsCommand extends BaseCommandHandler {
   }
 }
 
+import { InlineKeyboard } from 'grammy';
+
 /**
  * Remove feed command handler
  */
@@ -181,14 +183,43 @@ export class RemoveFeedCommand extends BaseCommandHandler {
       name: 'remove',
       aliases: ['remover'],
       description: 'Remove an RSS feed',
-      schema: CommandSchemas.singleString,
+      schema: CommandSchemas.optionalString,
       handler: instance.validateAndExecute.bind(instance),
     };
   }
 
-  protected async execute(ctx: CommandContext, args: [string]): Promise<void> {
+  protected async execute(ctx: CommandContext, args: string[]): Promise<void> {
     const [name] = args;
 
+    if (!name) {
+      // Interactive mode: show list of feeds as buttons
+      const feeds = await this.feedService.listFeeds(ctx.chatIdString);
+
+      if (feeds.length === 0) {
+        await ctx.reply(
+          '📭 **No feeds registered to remove.**',
+          { parse_mode: 'Markdown' }
+        );
+        return;
+      }
+
+      const keyboard = new InlineKeyboard();
+      for (const feed of feeds) {
+        keyboard.text(feed.name, `remove_feed:${feed.id}`).row();
+      }
+      keyboard.text('❌ Cancel', 'remove_cancel').row();
+
+      await ctx.reply(
+        '🗑️ **Select a feed to remove:**',
+        {
+          parse_mode: 'Markdown',
+          reply_markup: keyboard,
+        }
+      );
+      return;
+    }
+
+    // Direct mode: remove by name
     const result = await this.feedService.removeFeed(ctx.chatIdString, name);
 
     if (result.success) {
@@ -197,11 +228,12 @@ export class RemoveFeedCommand extends BaseCommandHandler {
       if (result.message === 'Feed not found') {
         await ctx.reply(ctx.t('feed.not_found', { name }));
       } else {
-        await ctx.reply(ctx.t('error.internal'));
+        await ctx.reply(result.message || ctx.t('error.internal'));
       }
     }
   }
 }
+
 
 /**
  * Enable feed command handler

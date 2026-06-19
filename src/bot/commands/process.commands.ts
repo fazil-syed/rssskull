@@ -29,7 +29,7 @@ export class ResetDatabaseCommand extends BaseCommandHandler {
     try {
       // Check if user is admin (you can customize this logic)
       const isAdmin = ctx.from?.id === 123456789; // Replace with your Telegram user ID
-      
+
       if (!isAdmin) {
         await ctx.reply('❌ **Access Denied**\n\nOnly administrators can use this command.');
         return;
@@ -71,7 +71,7 @@ export class ConfirmResetCommand extends BaseCommandHandler {
     try {
       // Check if user is admin
       const isAdmin = ctx.from?.id === 123456789; // Replace with your Telegram user ID
-      
+
       if (!isAdmin) {
         await ctx.reply('❌ **Access Denied**\n\nOnly administrators can use this command.');
         return;
@@ -118,7 +118,7 @@ export class CancelResetCommand extends BaseCommandHandler {
   }
 
   protected async execute(ctx: CommandContext): Promise<void> {
-      await ctx.reply('✅ **Reset cancelled**\n\nNo changes were made to the database.');
+    await ctx.reply('✅ **Reset cancelled**\n\nNo changes were made to the database.');
   }
 }
 
@@ -148,14 +148,14 @@ export class DebugFeedCommand extends BaseCommandHandler {
     try {
       const { FeedService } = await import('../../services/index.js');
       const { feedQueueService } = await import('../../jobs/index.js');
-      
+
       // Create feed service instance
       const feedService = new FeedService(database.client);
-      
+
       // Get the feed by name
       const feeds = await feedService.listFeeds(ctx.chatIdString);
       const feed = feeds.find((f: any) => f.name.toLowerCase() === args.feedName.toLowerCase());
-      
+
       if (!feed) {
         await ctx.reply(`❌ Feed "${args.feedName}" not found. Use /list to see available feeds.`);
         return;
@@ -169,7 +169,7 @@ export class DebugFeedCommand extends BaseCommandHandler {
         `• Last Check: ${feed.lastCheck ? new Date(feed.lastCheck).toLocaleString() : 'Never'}\n` +
         `• Last Notified: ${feed.lastNotifiedAt ? new Date(feed.lastNotifiedAt).toLocaleString() : 'Never'}\n` +
         `• Last Item ID: ${feed.lastItemId || 'None'}\n\n` +
-        `🚀 **Forcing immediate check...**`, 
+        `🚀 **Forcing immediate check...**`,
         { parse_mode: 'Markdown' });
 
       // Force immediate feed check
@@ -181,7 +181,7 @@ export class DebugFeedCommand extends BaseCommandHandler {
       }, 0); // No delay
 
       await ctx.reply(`✅ Debug check queued for "${feed.name}". Check logs for detailed results.`);
-      
+
       logger.info(`Debug feed check initiated for feed ${feed.name} (${feed.id}) by user in chat ${ctx.chatIdString}`);
     } catch (error) {
       logger.error('Failed to debug feed:', error);
@@ -229,16 +229,16 @@ export class ProcessFeedsCommand extends BaseCommandHandler {
       let processedCount = 0;
       let errorCount = 0;
       let totalNewItems = 0;
-      const feedResults: Array<{name: string, newItems: number, error?: string}> = [];
+      const feedResults: Array<{ name: string, newItems: number, error?: string }> = [];
 
       // Process each feed immediately and wait for results
       for (const feed of feeds) {
         try {
           logger.info(`Processing feed immediately: ${feed.name} (${feed.id})`);
-          
+
           // Get current lastItemId to compare later
           const originalLastItemId = feed.lastItemId;
-          
+
           // Schedule immediate feed check (no delay)
           await feedQueueService.scheduleFeedCheck({
             feedId: feed.id,
@@ -259,7 +259,7 @@ export class ProcessFeedsCommand extends BaseCommandHandler {
 
           const newItemsCount = updatedFeed?.lastItemId !== originalLastItemId ? 1 : 0;
           totalNewItems += newItemsCount;
-          
+
           feedResults.push({
             name: feed.name,
             newItems: newItemsCount
@@ -270,7 +270,7 @@ export class ProcessFeedsCommand extends BaseCommandHandler {
           errorCount++;
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
           logger.error(`Failed to process feed ${feed.name}:`, error);
-          
+
           feedResults.push({
             name: feed.name,
             newItems: 0,
@@ -289,7 +289,7 @@ export class ProcessFeedsCommand extends BaseCommandHandler {
       if (totalNewItems > 0) {
         resultMessage += `🎉 **${totalNewItems} new item(s) found!**\n\n`;
         resultMessage += `📋 **Details by feed:**\n`;
-        
+
         feedResults.forEach(result => {
           if (result.newItems > 0) {
             resultMessage += `• ✅ **${result.name}**: ${result.newItems} new item(s)\n`;
@@ -299,12 +299,12 @@ export class ProcessFeedsCommand extends BaseCommandHandler {
             resultMessage += `• 📭 **${result.name}**: No new items\n`;
           }
         });
-        
+
         resultMessage += `\n💡 **Note:** Only items published since the bot came online were processed.`;
       } else if (errorCount > 0) {
         resultMessage += `⚠️ **Some feeds had errors**\n\n`;
         resultMessage += `📋 **Details:**\n`;
-        
+
         feedResults.forEach(result => {
           if (result.error) {
             resultMessage += `• ❌ **${result.name}**: ${result.error}\n`;
@@ -312,16 +312,16 @@ export class ProcessFeedsCommand extends BaseCommandHandler {
             resultMessage += `• 📭 **${result.name}**: No new items\n`;
           }
         });
-        
+
         resultMessage += `\n💡 Check the logs for more details.`;
       } else {
         resultMessage += `📭 **No new items found**\n\n`;
         resultMessage += `📋 **Feed status:**\n`;
-        
+
         feedResults.forEach(result => {
           resultMessage += `• 📭 **${result.name}**: Up to date\n`;
         });
-        
+
         resultMessage += `\n💡 All feeds are up to date. Try again later.`;
       }
 
@@ -393,7 +393,7 @@ export class ResetFeedCommand extends BaseCommandHandler {
       });
 
       await ctx.reply(`✅ **lastItemId Reset!**\n\n📰 **Feed:** ${feed.name}\n🔗 **URL:** ${feed.rssUrl}\n\n🔄 The next processing will detect all items as new.`);
-      
+
       logger.info(`Successfully reset lastItemId for feed: ${feed.name} (${feed.id})`);
     } catch (error) {
       logger.error(`Failed to reset lastItemId for feed "${feedName}":`, error);
@@ -555,7 +555,7 @@ export class ReloadFeedsCommand extends BaseCommandHandler {
       for (const feed of feeds) {
         try {
           const intervalMinutes = feedIntervalService.getIntervalForUrl(feed.rssUrl);
-          
+
           await feedQueueService.scheduleRecurringFeedCheck({
             feedId: feed.id,
             chatId: feed.chatId,
@@ -586,14 +586,14 @@ export class ReloadFeedsCommand extends BaseCommandHandler {
             message += `• ✅ ${feed.name}\n`;
           }
         });
-        
+
         if (errorCount > 0) {
           message += `\n❌ **Feeds com erro:**\n`;
           errors.forEach(({ name, error }) => {
             message += `• ${name}: ${error}\n`;
           });
         }
-        
+
         message += `\n💡 Feeds will now be checked periodically.`;
       } else {
         message += `❌ **No feeds were scheduled!**\n\n`;

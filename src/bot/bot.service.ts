@@ -34,8 +34,8 @@ import {
   loggingMiddleware,
 } from './middleware/index.js';
 import { MentionProcessor } from '../utils/mention.utils.js';
-import { 
-  telegramResilienceHandler, 
+import {
+  telegramResilienceHandler,
   getTelegramConnectionManager,
   telegramCircuitBreaker,
   PersistentMessageQueue,
@@ -65,7 +65,7 @@ export class BotService {
   private botId?: number;
   private runner?: any;
   private feedsLoaded: boolean = false;
-  
+
   // Resilience system components
   private connectionManager: any;
   private messageQueue: any;
@@ -122,12 +122,12 @@ export class BotService {
   private setupCommandHandlers(): void {
     logger.info('🔧 Setting up command handlers...');
     console.log('🔧 Setting up command handlers...');
-    
+
     // Handle commands through the command router
     this.bot.on('message:text', async (ctx, next) => {
       const text = ctx.message.text;
       const authCtx = ctx as CommandContext;
-      
+
       // Debug logging for all text messages
       const user = ctx.from?.first_name || 'Unknown';
       const chatType = ctx.chat?.type || 'unknown';
@@ -138,7 +138,7 @@ export class BotService {
       if (this.botUsername && this.botId && ctx.message?.text && ctx.message?.entities) {
         const mentionProcessor = MentionProcessor.create(this.botUsername, this.botId, false);
         const mentionContext = mentionProcessor.extractMentionCommand(text, ctx.message.entities);
-        
+
         // Add mention context to the context object
         Object.assign(ctx, {
           mentionContext,
@@ -356,7 +356,7 @@ export class BotService {
     this.commandRouter.register(FixFeedsCommand.create());
     this.commandRouter.register(ResetCircuitBreakerCommand.create());
     this.commandRouter.register(CircuitBreakerStatsCommand.create());
-    
+
     // Secret/debug commands (not listed in help)
     this.commandRouter.register(StatsCommand.create());
     // this.commandRouter.register(ProcessFeedsCommand.create()); // Disabled - command no longer used
@@ -380,7 +380,7 @@ export class BotService {
       // Enhanced error logging with channel context
       // Sanitize all data before logging to prevent token leaks
       const { sanitizeForLogging } = await import('../utils/security/sanitizer.js');
-      
+
       const errorInfo = {
         chatId: ctx.chat?.id,
         userId: ctx.from?.id,
@@ -420,7 +420,7 @@ export class BotService {
       if (this.botUsername && this.botId && ctx.message?.text && ctx.message?.entities) {
         const mentionProcessor = MentionProcessor.create(this.botUsername, this.botId, false);
         const mentionContext = mentionProcessor.extractMentionCommand(text, ctx.message.entities);
-        
+
         // Add mention context to the context object
         Object.assign(ctx, {
           mentionContext,
@@ -743,7 +743,7 @@ export class BotService {
       // Sanitize channel post before logging
       const { sanitizeForLogging } = await import('../utils/security/sanitizer.js');
       const sanitizedPost = sanitizeForLogging(ctx.channelPost);
-      
+
       logger.info('Channel post received', {
         chatId: ctx.chat?.id,
         text: ctx.channelPost?.text,
@@ -887,7 +887,7 @@ export class BotService {
         // Sanitize update before logging
         const { sanitizeForLogging } = await import('../utils/security/sanitizer.js');
         const sanitizedUpdate = sanitizeForLogging(ctx.update);
-        
+
         logger.info('Channel message received', {
           chatId: authCtx.chatIdString,
           userId: authCtx.userId,
@@ -1005,6 +1005,70 @@ export class BotService {
 
     // Handle callback queries (for future inline keyboards)
     this.bot.on('callback_query', async (ctx, next) => {
+      const data = ctx.callbackQuery?.data;
+
+      if (data) {
+        if (data.startsWith('remove_feed:')) {
+          const feedId = data.replace('remove_feed:', '');
+          try {
+            const { database } = await import('../database/database.service.js');
+            const { FeedService } = await import('../services/feed.service.js');
+            const feedService = new FeedService(database.client);
+
+            // Fetch the feed first to get the name and verify ownership
+            const feed = await database.client.feed.findUnique({
+              where: { id: feedId },
+            });
+
+            const chatIdStr = ctx.chat?.id?.toString();
+
+            if (!feed || feed.chatId !== chatIdStr) {
+              await ctx.answerCallbackQuery({
+                text: '❌ Feed not found or permission denied.',
+                show_alert: true,
+              }).catch(() => {});
+              await ctx.editMessageText('❌ Feed not found or permission denied.').catch(() => {});
+              return;
+            }
+
+            // Remove the feed
+            const result = await feedService.removeFeedById(feedId);
+
+            if (result.success) {
+              await ctx.answerCallbackQuery({
+                text: `✅ Feed "${feed.name}" removed successfully.`,
+              }).catch(() => {});
+              await ctx.editMessageText(`✅ Feed "**${feed.name}**" removed successfully.`, { parse_mode: 'Markdown' }).catch(() => {});
+            } else {
+              await ctx.answerCallbackQuery({
+                text: result.message || '❌ Failed to remove feed.',
+                show_alert: true,
+              }).catch(() => {});
+              await ctx.editMessageText(`❌ Failed to remove feed: ${result.message}`).catch(() => {});
+            }
+          } catch (error) {
+            logger.error('Error handling feed removal callback:', error);
+            await ctx.answerCallbackQuery({
+              text: '❌ Internal error removing feed.',
+              show_alert: true,
+            }).catch(() => {});
+          }
+          return;
+        }
+
+        if (data === 'remove_cancel') {
+          try {
+            await ctx.answerCallbackQuery({
+              text: 'Cancelled.',
+            }).catch(() => {});
+            await ctx.editMessageText('👍 No feeds were removed.').catch(() => {});
+          } catch (error) {
+            logger.error('Error handling remove cancel callback:', error);
+          }
+          return;
+        }
+      }
+
       // Answer callback query to remove loading state
       await ctx.answerCallbackQuery().catch((error) => {
         logger.warn('Failed to answer callback query', error);
@@ -1012,6 +1076,7 @@ export class BotService {
 
       await next();
     });
+
   }
 
   async initialize(): Promise<void> {
@@ -1055,11 +1120,11 @@ export class BotService {
 
       logger.info('🔧 Step 4: Starting bot polling (this might take a moment)...');
       console.log('🔧 Step 4: Starting bot polling (this might take a moment)...');
-      
+
       // Clear any existing webhook first
       logger.info('🔧 Clearing webhook to enable polling...');
       console.log('🔧 Clearing webhook to enable polling...');
-      
+
       try {
         await this.bot.api.deleteWebhook({ drop_pending_updates: true });
         logger.info('✅ Webhook cleared');
@@ -1072,23 +1137,23 @@ export class BotService {
       // Use grammY Runner for better reliability and concurrency
       logger.info('🔧 Starting bot with grammY Runner...');
       console.log('🔧 Starting bot with grammY Runner...');
-      
+
       try {
         // Start bot with runner for concurrent processing
         this.runner = run(this.bot);
-        
+
         logger.info('✅ Bot started with grammY Runner');
         console.log('✅ Bot started with grammY Runner');
       } catch (error) {
         logger.error('❌ Failed to start bot with runner:', error);
         console.error('❌ Failed to start bot with runner:', error);
-        
+
         // Check for 409 Conflict error (multiple instances)
         if (error && typeof error === 'object' && 'error_code' in error && error.error_code === 409) {
           logger.error('🔴 Conflict detected: Another bot instance is running');
           logger.info('⏳ Waiting 5 seconds before retry...');
           await new Promise(resolve => setTimeout(resolve, 5000));
-          
+
           // Retry deleting webhook
           try {
             await this.bot.api.deleteWebhook({ drop_pending_updates: true });
@@ -1097,17 +1162,17 @@ export class BotService {
             logger.warn('Webhook clear failed on retry:', webhookError);
           }
         }
-        
+
         // Fallback to regular polling
         logger.info('🔄 Falling back to regular polling...');
         console.log('🔄 Falling back to regular polling...');
-        
+
         // Try regular polling with timeout
         const pollingPromise = this.bot.start();
-        const pollingTimeout = new Promise((_, reject) => 
+        const pollingTimeout = new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Polling timeout')), 15000)
         );
-        
+
         try {
           await Promise.race([pollingPromise, pollingTimeout]);
           logger.info('✅ Bot polling started successfully');
@@ -1115,7 +1180,7 @@ export class BotService {
         } catch (pollingError) {
           logger.error('❌ Regular polling also failed:', pollingError);
           console.error('❌ Regular polling also failed:', pollingError);
-          
+
           // Last resort: start polling in background without waiting
           this.bot.start().then(() => {
             logger.info('✅ Bot polling started in background (last resort)');
@@ -1126,7 +1191,7 @@ export class BotService {
           });
         }
       }
-      
+
       logger.info('✅ Bot polling initialization completed');
       console.log('✅ Bot polling initialization completed');
 
@@ -1136,7 +1201,7 @@ export class BotService {
       this.loadAndScheduleAllFeedsAsync();
       logger.info('✅ Background feed loading scheduled');
       console.log('✅ Background feed loading scheduled');
-      
+
     } catch (error) {
       logger.error('❌ Failed to initialize bot:', error);
       console.error('❌ Failed to initialize bot:', error);
@@ -1216,7 +1281,7 @@ export class BotService {
       // NO POLLING - webhook mode
       logger.info('✅ Bot ready for webhook mode (no polling)');
       console.log('✅ Bot ready for webhook mode (no polling)');
-      
+
     } catch (error) {
       logger.error('❌ Failed to initialize bot (webhook):', error);
       console.error('❌ Failed to initialize bot (webhook):', error);
@@ -1286,7 +1351,7 @@ export class BotService {
   async restartPollingIfNeeded(): Promise<boolean> {
     try {
       const isActive = await this.isPollingActive();
-      
+
       if (isActive) {
         logger.debug('Bot polling is active - no restart needed');
         return false;
@@ -1325,7 +1390,7 @@ export class BotService {
         return true;
       } catch (runnerError) {
         logger.error('Failed to restart with runner, trying regular polling:', runnerError);
-        
+
         // Fallback to regular polling
         try {
           await this.bot.start();
@@ -1357,11 +1422,11 @@ export class BotService {
       } catch (error) {
         logger.error('❌ Failed to load feeds in background:', error);
         console.error('❌ Failed to load feeds in background:', error);
-        
+
         // Retry more aggressively: 10 seconds, then 30 seconds, then give up
         logger.info('🔄 Retrying feed loading in 10 seconds...');
         console.log('🔄 Retrying feed loading in 10 seconds...');
-        
+
         setTimeout(async () => {
           try {
             await this.loadAndScheduleAllFeeds();
@@ -1370,11 +1435,11 @@ export class BotService {
           } catch (retryError) {
             logger.error('❌ Feed loading failed again on retry:', retryError);
             console.error('❌ Feed loading failed again on retry:', retryError);
-            
+
             // Final retry after 30 seconds
             logger.info('🔄 Final retry in 30 seconds...');
             console.log('🔄 Final retry in 30 seconds...');
-            
+
             setTimeout(async () => {
               try {
                 await this.loadAndScheduleAllFeeds();
@@ -1410,7 +1475,7 @@ export class BotService {
       logger.info('📦 Importing database service...');
       const { database } = await Promise.race([
         import('../database/database.service.js'),
-        new Promise((_, reject) => 
+        new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Database import timeout')), 10000)
         )
       ]) as any;
@@ -1427,7 +1492,7 @@ export class BotService {
             },
           },
         }),
-        new Promise((_, reject) => 
+        new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Database query timeout')), 15000)
         )
       ]) as any;
@@ -1473,14 +1538,14 @@ export class BotService {
 
       logger.info(`✅ Feed loading completed: ${totalScheduled} feeds scheduled, ${totalErrors} errors`);
       console.log(`✅ Feed loading completed: ${totalScheduled} feeds scheduled, ${totalErrors} errors`);
-      
+
       if (totalErrors > 0) {
         logger.warn(`⚠️ Errors during feed scheduling:`);
         errorDetails.forEach(({ name, error }) => {
           logger.warn(`  • ${name}: ${error}`);
         });
       }
-      
+
       if (totalScheduled === 0) {
         logger.warn('⚠️ No feeds were scheduled. This might be normal if no feeds exist yet.');
       }
@@ -1827,7 +1892,7 @@ export class BotService {
     try {
       // Classify the error
       const telegramError = TelegramErrorClassifier.classifyError(
-        error, 
+        error,
         errorInfo?.method || 'unknown',
         errorInfo
       );
@@ -1969,12 +2034,12 @@ export class BotService {
       // Initialize health monitor
       this.healthMonitor = new TelegramHealthMonitor(
         this.connectionManager.persistence || {
-          recordHealthMetric: async () => {},
+          recordHealthMetric: async () => { },
           getHealthMetrics: async () => [],
           cleanupOldMetrics: async () => 0,
-          saveConnectionState: async () => {},
+          saveConnectionState: async () => { },
           loadConnectionState: async () => null,
-          deleteConnectionState: async () => {},
+          deleteConnectionState: async () => { },
           getConnectionStats: async () => null
         },
         this.messageQueue,
@@ -2003,7 +2068,7 @@ export class BotService {
       logger.error('Failed to initialize resilience system', {
         error: error instanceof Error ? error.message : String(error)
       });
-      
+
       // Disable resilience system if initialization fails
       this.resilienceEnabled = false;
     }

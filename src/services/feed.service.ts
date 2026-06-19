@@ -553,4 +553,74 @@ export class FeedService {
 
     return urls;
   }
+
+  /**
+   * Remove a feed by its database ID
+   */
+  async removeFeedById(feedId: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const feed = await this.feedRepository.findById(feedId);
+      if (!feed) {
+        return { success: false, message: 'Feed not found' };
+      }
+
+      logger.info(`Starting transactional removal of feed by ID: ${feed.name} (${feed.id})`);
+
+      // Use database transaction to ensure atomicity
+      await this.feedRepository['prisma'].$transaction(async (tx: any) => {
+        // Step 1: Remove recurring feed check job from queue first
+        logger.info(`Removing recurring job for feed ${feed.id}`);
+        const jobRemoved = await feedQueueService.removeRecurringFeedCheck(feed.id);
+        
+        if (!jobRemoved) {
+          logger.error(`Failed to remove recurring job for feed ${feed.id}, aborting transaction`);
+          throw new Error(`Failed to remove recurring job for feed ${feed.id}. Feed deletion aborted to prevent orphaned jobs.`);
+        }
+
+        // Step 2: Verify job removal was successful
+        const jobVerified = await feedQueueService.verifyJobRemoval(feed.id);
+        if (!jobVerified) {
+          logger.error(`Job removal verification failed for feed ${feed.id}, aborting transaction`);
+          throw new Error(`Job removal verification failed for feed ${feed.id}. Feed deletion aborted.`);
+        }
+
+        // Step 3: Delete feed record from database
+        logger.info(`Deleting feed record for ${feed.id}`);
+        await tx.feed.delete({
+          where: { id: feed.id }
+        });
+
+        logger.info(`✅ Successfully completed transactional removal of feed: ${feed.name} (${feed.id})`);
+      });
+
+      logger.info(`Feed removed successfully: ${feed.name} (${feed.id})`);
+      return { success: true, message: 'Feed removed successfully' };
+
+    } catch (error) {
+      logger.error(`Error removing feed by ID ${feedId}:`, error);
+      
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      
+      if (errorMessage.includes('Failed to remove recurring job')) {
+        return { 
+          success: false, 
+          message: 'Failed to remove feed: Could not clean up scheduled jobs. Please try again or contact support.' 
+        };
+      }
+      
+      if (errorMessage.includes('Job removal verification failed')) {
+        return { 
+          success: false, 
+          message: 'Failed to remove feed: Job cleanup verification failed. Please try again.' 
+        };
+      }
+
+      return { 
+        success: false, 
+        message: 'Failed to remove feed due to internal error. Please try again.' 
+      };
+    }
+  }
 }
+
+
