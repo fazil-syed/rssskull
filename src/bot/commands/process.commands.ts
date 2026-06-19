@@ -613,3 +613,101 @@ export class ReloadFeedsCommand extends BaseCommandHandler {
     }
   }
 }
+
+/**
+ * Command to trigger an immediate check for a specific feed
+ */
+export class CheckFeedCommand extends BaseCommandHandler {
+  static create(): CommandHandler {
+    const instance = new CheckFeedCommand();
+    return {
+      name: 'check',
+      aliases: ['fetch', 'pull'],
+      description: 'Trigger an immediate check for a specific feed',
+      schema: CommandSchemas.singleString,
+      handler: instance.validateAndExecute.bind(instance),
+    };
+  }
+
+  protected async execute(ctx: CommandContext, args: [string]): Promise<void> {
+    const [feedName] = args;
+    const chatId = ctx.chatIdString;
+
+    try {
+      // 1. Look up the feed
+      const feed = await database.client.feed.findFirst({
+        where: {
+          chatId,
+          name: feedName,
+        },
+      });
+
+      if (!feed) {
+        await ctx.reply(`❌ Feed "**${feedName}**" not found in this chat.`, { parse_mode: 'Markdown' });
+        return;
+      }
+
+      // Snapshot the last check time
+      const startCheckTime = feed.lastCheck;
+
+      // 2. Queue the job
+      await feedQueueService.scheduleFeedCheck({
+        feedId: feed.id,
+        chatId: feed.chatId,
+        feedUrl: feed.rssUrl,
+        lastItemId: feed.lastItemId ?? undefined,
+      });
+
+      // 3. Notify user that polling has started
+      const statusMessage = await ctx.reply(`⏳ Queued immediate check for "**${feedName}**". Waiting for results...`, { parse_mode: 'Markdown' });
+      
+      // 4. Poll database for completion (every 2 seconds, max 8 attempts = ~16 seconds)
+      const maxAttempts = 8;
+      let checkFinished = false;
+
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        // Wait 2 seconds
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        // Re-fetch feed to check lastCheck
+        const currentFeed = await database.client.feed.findUnique({
+          where: { id: feed.id },
+          select: { lastCheck: true },
+        });
+
+        if (currentFeed && startCheckTime && currentFeed.lastCheck > startCheckTime) {
+          checkFinished = true;
+          break;
+        } else if (currentFeed && !startCheckTime && currentFeed.lastCheck) {
+          // Edge case: never checked before, now has a check time
+          checkFinished = true;
+          break;
+        }
+      }
+
+      // 5. Final update
+      if (checkFinished) {
+        // We don't know exactly how many items were found here (worker handles delivery),
+        // but we know the check successfully completed.
+        await ctx.api.editMessageText(
+          ctx.chatId,
+          statusMessage.message_id,
+          `✅ **Check complete for "${feedName}"!**\n\nIf any new items were found, they have been delivered to the chat.`,
+          { parse_mode: 'Markdown' }
+        ).catch(e => logger.warn(`Failed to edit check status message: ${e.message}`));
+      } else {
+        await ctx.api.editMessageText(
+          ctx.chatId,
+          statusMessage.message_id,
+          `⏱️ **Check for "${feedName}" is taking longer than expected.**\n\nThe job is still queued and will process shortly. New items will arrive once it finishes.`,
+          { parse_mode: 'Markdown' }
+        ).catch(e => logger.warn(`Failed to edit check status message: ${e.message}`));
+      }
+
+    } catch (error) {
+      logger.error(`Error checking feed ${feedName}:`, error);
+      await ctx.reply('❌ **Error triggering feed check**\n\nError: ' + getSafeErrorMessage(error));
+    }
+  }
+}
+

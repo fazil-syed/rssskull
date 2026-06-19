@@ -6,6 +6,7 @@ import { notificationService } from '../services/notification.service.js';
 import { logger } from '../utils/logger/logger.service.js';
 import {
   AddFeedCommand,
+  CheckFeedCommand,
   DisableFeedCommand,
   CircuitBreakerStatsCommand,
   DebugFeedCommand,
@@ -361,6 +362,7 @@ export class BotService {
     this.commandRouter.register(StatsCommand.create());
     // this.commandRouter.register(ProcessFeedsCommand.create()); // Disabled - command no longer used
     // this.commandRouter.register(ProcessFeedCommand.create()); // Disabled - command no longer used
+    this.commandRouter.register(CheckFeedCommand.create());
     this.commandRouter.register(DebugFeedCommand.create());
     this.commandRouter.register(ResetFeedCommand.create());
     this.commandRouter.register(FeedStatusCommand.create());
