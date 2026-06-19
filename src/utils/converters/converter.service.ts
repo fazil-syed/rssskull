@@ -135,6 +135,7 @@ export class ConverterService {
         pathname.endsWith('.rss') ||
         pathname.endsWith('.xml') ||
         pathname.includes('/rss') ||
+        pathname.includes('.atom') ||
         pathname.includes('/feed') ||
         pathname.includes('/feeds') ||
         searchParams.has('feed') ||
