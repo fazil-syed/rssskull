@@ -265,22 +265,12 @@ export class TemplateService {
     if (!text) return '';
 
     // Escape markdown special characters
+    // Escape markdown special characters (MarkdownV1 only requires *, _, [, `)
     return text
       .replace(/\*/g, '\\*')
       .replace(/_/g, '\\_')
       .replace(/\[/g, '\\[')
-      .replace(/\]/g, '\\]')
-      .replace(/\(/g, '\\(')
-      .replace(/\)/g, '\\)')
-      .replace(/~/g, '\\~')
-      .replace(/`/g, '\\`')
-      .replace(/>/g, '\\>')
-      .replace(/#/g, '\\#')
-      .replace(/\+/g, '\\+')
-      .replace(/-/g, '\\-')
-      .replace(/=/g, '\\=')
-      .replace(/\|/g, '\\|')
-      .replace(/!/g, '\\!');
+      .replace(/`/g, '\\`');
   }
 
   /**
