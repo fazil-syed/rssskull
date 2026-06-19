@@ -33,20 +33,20 @@ export class CacheService {
   private domainTTL: Record<string, number> = {
     // Alta frequência - cache curto
     'reddit.com': 0, // Cache desabilitado para Reddit RSS para evitar leituras defasadas
-    'hackernews': 5 * 60 * 1000,  // 5 minutos
+    'hnrss.org': 0,               // Cache disabled for HN RSS to avoid stale reads
     'techcrunch.com': 5 * 60 * 1000, // 5 minutos
-    
+
     // Frequência moderada
     'youtube.com': 15 * 60 * 1000, // 15 minutos
     'medium.com': 15 * 60 * 1000,  // 15 minutos
     'dev.to': 15 * 60 * 1000,      // 15 minutos
-    
+
     // Baixa frequência - cache longo
     'github.com': 60 * 60 * 1000,  // 60 minutos (releases)
     'blog': 30 * 60 * 1000,        // 30 minutos (blogs pessoais)
-    
+
     // Padrão
-    'default': 20 * 60 * 1000,     // 20 minutos
+    'default': 0,     // 20 minutos
   };
 
   /**
@@ -55,16 +55,16 @@ export class CacheService {
   private calculateTTL(url: string): number {
     const domain = this.extractDomain(url);
     const baseTTL = this.domainTTL[domain] ?? this.domainTTL.default ?? 20 * 60 * 1000;
-    
+
     // Se TTL é 0 (cache desabilitado), retornar 0 diretamente
     if (baseTTL <= 0) {
       return 0;
     }
-    
+
     // Adicionar variação aleatória (±25% de variação)
     const variation = Math.random() * 0.5 * baseTTL - 0.25 * baseTTL;
     const randomTTL = Math.max(baseTTL * 0.5, baseTTL + variation); // Mínimo 50% do TTL base
-    
+
     // Calculated TTL for domain
     return randomTTL;
   }
@@ -74,7 +74,7 @@ export class CacheService {
    */
   get(url: string): RSSFeed | null {
     const entry = this.cache.get(url);
-    
+
     if (!entry) {
       this.stats.misses++;
       // Cache miss
@@ -95,10 +95,10 @@ export class CacheService {
     entry.lastAccess = now;
     this.stats.hits++;
 
-    logger.debug(`Cache HIT: ${this.extractDomain(url)}`, { 
-      url, 
+    logger.debug(`Cache HIT: ${this.extractDomain(url)}`, {
+      url,
       age: now - entry.timestamp,
-      hitCount: entry.hitCount 
+      hitCount: entry.hitCount
     });
 
     return entry.feed;
@@ -126,7 +126,7 @@ export class CacheService {
       });
       return;
     }
-    
+
     const entry: CacheEntry = {
       url,
       feed,
@@ -140,8 +140,8 @@ export class CacheService {
 
     this.cache.set(url, entry);
 
-    logger.debug(`Cache SET: ${this.extractDomain(url)}`, { 
-      url, 
+    logger.debug(`Cache SET: ${this.extractDomain(url)}`, {
+      url,
       ttl: ttl / 1000 / 60, // TTL in minutes
       itemCount: feed.items.length,
       etag: headers?.etag,
@@ -159,7 +159,7 @@ export class CacheService {
    */
   getEntry(url: string): CacheEntry | null {
     const entry = this.cache.get(url);
-    
+
     if (!entry) {
       this.stats.misses++;
       // Cache miss
@@ -180,8 +180,8 @@ export class CacheService {
     entry.lastAccess = now;
     this.stats.hits++;
 
-    logger.debug(`Cache HIT: ${this.extractDomain(url)}`, { 
-      url, 
+    logger.debug(`Cache HIT: ${this.extractDomain(url)}`, {
+      url,
       age: now - entry.timestamp,
       hitCount: entry.hitCount,
       etag: entry.etag,
@@ -215,7 +215,7 @@ export class CacheService {
     if (url.includes('reddit.com')) {
       return this.domainTTL['reddit.com'] ?? 0;
     }
-    
+
     // For other domains, use configurable TTL
     return this.calculateTTL(url);
   }
@@ -250,10 +250,10 @@ export class CacheService {
     // If still too many entries, remove least recently used
     if (this.cache.size > maxEntries) {
       const entries = Array.from(this.cache.entries());
-      
+
       // Sort by last access (oldest first)
       entries.sort((a, b) => a[1].lastAccess - b[1].lastAccess);
-      
+
       // Remove oldest entries
       const toRemove = this.cache.size - maxEntries;
       for (let i = 0; i < toRemove && i < entries.length; i++) {
@@ -280,10 +280,10 @@ export class CacheService {
   getStats(): CacheStats {
     const now = Date.now();
     const entries = Array.from(this.cache.values());
-    
+
     const totalRequests = this.stats.hits + this.stats.misses;
     const hitRate = totalRequests > 0 ? (this.stats.hits / totalRequests) * 100 : 0;
-    
+
     // Calculate memory usage (rough estimate)
     const memoryUsage = entries.reduce((total, entry) => {
       return total + JSON.stringify(entry.feed).length;
@@ -373,7 +373,7 @@ export class CacheService {
    */
   async preload(urls: string[], fetchFunction: (url: string) => Promise<RSSFeed | null>): Promise<void> {
     const uncachedUrls = urls.filter(url => !this.has(url));
-    
+
     if (uncachedUrls.length === 0) {
       logger.debug('All URLs already cached');
       return;
@@ -385,7 +385,7 @@ export class CacheService {
     const batchSize = 5;
     for (let i = 0; i < uncachedUrls.length; i += batchSize) {
       const batch = uncachedUrls.slice(i, i + batchSize);
-      
+
       await Promise.allSettled(
         batch.map(async (url) => {
           try {
