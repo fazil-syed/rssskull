@@ -392,67 +392,52 @@ export class RSSService {
       const firstItem = items[0];
       
       // If the first item in the feed is DIFFERENT from lastItemId, it's a new item!
-      // This handles cases where Reddit returns a different post at the top
+      // This handles cases where feeds return a different post at the top
       if (firstItem && firstItem.id !== lastItemId) {
-        logger.info(`🔍 REDDIT DEBUG: First item changed! Old lastItemId: ${lastItemId}, New first item: ${firstItem.id}`);
-        logger.info(`🔍 REDDIT DEBUG: Returning only the new top item: ${firstItem.id}`);
+        logger.info(`🔍 DEBUG: First item changed! Old lastItemId: ${lastItemId}, New first item: ${firstItem.id}`);
         return { items: [firstItem], totalItemsCount, firstItemId };
       }
       
-      // For Reddit, ALWAYS check for items with newer timestamps (CRITICAL FIX)
-      // This catches posts that were created after lastItemId was saved, even if they're not at the top
-      // Reddit may reorder posts by popularity, so new posts might not be at position 0
-      if (url.includes('reddit.com')) {
-        const lastItem = items.find(item => item.id === lastItemId);
-        const lastItemDate = lastItem?.pubDate;
+      // CRITICAL: Check for items with newer timestamps even when lastItemId is at position 0.
+      // This handles feeds sorted by score/popularity (e.g. HN sorted by points, Reddit by upvotes)
+      // where new items can appear BELOW the top item rather than above it.
+      const lastItem = items.find(item => item.id === lastItemId);
+      const lastItemDate = lastItem?.pubDate;
+      
+      if (lastItemDate) {
+        logger.info(`🔍 DEBUG: lastItemId at position 0, checking for posts newer than ${lastItemDate.toISOString()}`);
         
-        if (lastItemDate) {
-          logger.info(`🔍 REDDIT DEBUG: lastItemId found at position 0, checking for posts newer than ${lastItemDate.toISOString()}`);
-          logger.info(`🔍 REDDIT DEBUG: lastItemId date: ${lastItemDate.toISOString()}, current time: ${new Date().toISOString()}`);
+        // Find ALL items with timestamp STRICTLY newer than lastItemId
+        // Use > (greater than) not >= to avoid same-timestamp issues
+        const newerItems = items.filter(item => {
+          if (!item.pubDate) return false;
+          const isNewer = item.pubDate > lastItemDate;
+          if (isNewer) {
+            const minutesDiff = Math.round((item.pubDate.getTime() - lastItemDate.getTime()) / (1000 * 60));
+            logger.debug(`🔍 DEBUG: Item ${item.id} is ${minutesDiff} minutes newer than lastItemId`);
+          }
+          return isNewer;
+        });
+        
+        if (newerItems.length > 0) {
+          // Return items that are NOT the lastItemId (exclude the known item itself)
+          const trulyNewItems = newerItems.filter(item => item.id !== lastItemId);
           
-          // Find ALL items with timestamp STRICTLY newer than lastItemId
-          // Use > (greater than) not >= to avoid same-timestamp issues
-          const newerItems = items.filter(item => {
-            if (!item.pubDate) return false;
-            // Only include items that are STRICTLY newer (not equal)
-            // This catches posts created after the lastItemId was saved
-            const isNewer = item.pubDate > lastItemDate;
-            if (isNewer) {
-              const minutesDiff = Math.round((item.pubDate.getTime() - lastItemDate.getTime()) / (1000 * 60));
-              logger.debug(`🔍 REDDIT DEBUG: Item ${item.id} is ${minutesDiff} minutes newer than lastItemId`);
-            }
-            return isNewer;
-          });
-          
-          if (newerItems.length > 0) {
-            logger.info(`🔍 REDDIT DEBUG: Found ${newerItems.length} posts STRICTLY newer than lastItemId`);
-            logger.info(`🔍 REDDIT DEBUG: newerItems IDs: ${newerItems.map(i => `${i.id} (${i.pubDate?.toISOString()})`).join(', ')}`);
-            
-            // Return items that are NOT the lastItemId (exclude the known item itself)
-            const trulyNewItems = newerItems.filter(item => item.id !== lastItemId);
-            
-            logger.info(`🔍 REDDIT DEBUG: After filtering lastItemId (${lastItemId}): ${trulyNewItems.length} truly new items`);
-            if (trulyNewItems.length > 0) {
-              logger.info(`🔍 REDDIT DEBUG: ✅ Returning ${trulyNewItems.length} truly new posts (excluding known item)`);
-              logger.info(`🔍 REDDIT DEBUG: New posts detected even though lastItemId is at position 0!`);
-              // Sort by date descending to return most recent first
-              trulyNewItems.sort((a, b) => {
-                if (!a.pubDate || !b.pubDate) return 0;
-                return b.pubDate.getTime() - a.pubDate.getTime();
-              });
-              return { items: trulyNewItems, totalItemsCount, firstItemId };
-            } else {
-              logger.info(`🔍 REDDIT DEBUG: All newer items were filtered out (they were the lastItemId itself)`);
-            }
-          } else {
-            logger.info(`🔍 REDDIT DEBUG: No items with timestamps strictly newer than lastItemId`);
-            // Log first few items for debugging
-            const first5Items = items.slice(0, 5);
-            logger.info(`🔍 REDDIT DEBUG: First 5 items timestamps: ${first5Items.map(i => `${i.id}: ${i.pubDate?.toISOString() || 'no date'}`).join(', ')}`);
+          logger.info(`🔍 DEBUG: Found ${newerItems.length} posts strictly newer than lastItemId, ${trulyNewItems.length} after filtering`);
+          if (trulyNewItems.length > 0) {
+            logger.info(`🔍 DEBUG: ✅ Returning ${trulyNewItems.length} new posts detected via timestamp (lastItemId at position 0)`);
+            // Sort by date descending to return most recent first
+            trulyNewItems.sort((a, b) => {
+              if (!a.pubDate || !b.pubDate) return 0;
+              return b.pubDate.getTime() - a.pubDate.getTime();
+            });
+            return { items: trulyNewItems, totalItemsCount, firstItemId };
           }
         } else {
-          logger.warn(`🔍 REDDIT DEBUG: lastItemId found but has no pubDate - cannot check for newer posts`);
+          logger.debug(`🔍 DEBUG: No items with timestamps strictly newer than lastItemId`);
         }
+      } else {
+        logger.warn(`🔍 DEBUG: lastItemId found but has no pubDate - cannot check for newer posts by timestamp`);
       }
       
       // Check for staleness - warn if first post is very old
@@ -462,7 +447,7 @@ export class RSSService {
         
         if (itemAge > oneHourMs && firstItem.id === lastItemId) {
           logger.warn(`⚠️ STALENESS: First post in ${url} is ${Math.round(itemAge / 60000)} minutes old and no new items detected`);
-          logger.warn(`⚠️ This may indicate Reddit RSS lag or upstream cache delay`);
+          logger.warn(`⚠️ This may indicate upstream feed lag or cache delay`);
         }
       }
       

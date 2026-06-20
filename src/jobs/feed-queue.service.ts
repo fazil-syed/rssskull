@@ -381,8 +381,8 @@ export class FeedQueueService {
     try {
       const { database } = await import('../database/database.service.js');
       
-      // Find feeds that haven't been updated in the last 6 hours (more aggressive)
-      const cutoffTime = new Date(Date.now() - 6 * 60 * 60 * 1000); // 6 hours ago
+      // Find feeds that haven't been updated in the last 12 hours
+      const cutoffTime = new Date(Date.now() - 12 * 60 * 60 * 1000); // 12 hours ago
       
       const problematicFeeds = await database.client.feed.findMany({
         where: {
